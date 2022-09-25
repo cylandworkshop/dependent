@@ -1,11 +1,5 @@
 function Main_scene(pixi) {
     let scene = new Container();
-    let background = new Graphics()
-        .beginFill(0x000000)
-        .drawRect(0, 0, pixi.screen.width, pixi.screen.height)
-        .endFill();
-
-    scene.addChild(background);
 
     fetch("svg/Голова/g1.svg")
     .then(r => r.text())
@@ -17,6 +11,7 @@ function Main_scene(pixi) {
       let ellipses = [...doc.querySelectorAll("ellipse"), ...doc.querySelectorAll("circle")];
       ellipses.forEach(ellipse => ellipse.parentNode.removeChild(ellipse));
 
+      // let svg_r = new PIXI.SVGResource(svg);
       let svg_r = new PIXI.SVGResource(new XMLSerializer().serializeToString(doc));
       let svg_t = new PIXI.BaseTexture(svg_r);
 
