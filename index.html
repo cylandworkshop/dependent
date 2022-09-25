@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SVG.js</title>
+  <script src="d3.v4.min.js"></script>
+  <style type="text/css">
+    html, head {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body onload="page_load()">
+</body>
+<script type="text/javascript">
+  let fragments = [];
+
+  function page_load() {
+    fetch("svg/Голова/g1.svg")
+    .then(r => r.text())
+    .then(svg => {
+      let div = document.createElement("div");
+      div.insertAdjacentHTML("afterbegin", svg);
+
+      let doc = div.querySelector("svg");
+      let ellipses = [...doc.querySelectorAll("ellipse"), ...doc.querySelectorAll("circle")];
+      ellipses.forEach(ellipse => ellipse.parentNode.removeChild(ellipse));
+
+      let image = doc.querySelector("image");
+      // let transform = `translate(1000,0) scale(0.4) rotate(${angle}})`;
+      // image.setAttribute("transform", transform);
+
+      fragments.push({
+        element: image
+      });
+
+      document.body.append(div);
+    });
+
+    window.requestAnimationFrame(animate);
+  }
+  let angle = 0;
+  function animate() {
+    fragments.forEach(x =>
+      x.element.setAttribute("transform", `translate(1000,500) scale(0.4) rotate(${angle}) translate(-600,-600)`)
+    );
+    angle += 1;
+
+    window.requestAnimationFrame(animate);
+  }
+</script>
+</html>
