@@ -1,3 +1,22 @@
+function get_fragments_dir(name) {
+    const url = "/svg/" + name + "/";
+    return fetch(url)
+    .then(response => response.text())
+    .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        const links = Array.prototype.slice.call(
+            doc.querySelectorAll("body > ul > li > a")
+        ).map(x => (url + x.innerHTML));
+        return {name, links};
+    });
+}
+
+function get_fragments_list() {
+    return Promise.all(['root', 'body', 'parts'].map(x => get_fragments_dir(x)));
+}
+
 function add_fragment(url, parent, position, fragments) {
     return new Promise((resolve, reject) => {
         fetch(url)
@@ -57,18 +76,44 @@ function add_fragment(url, parent, position, fragments) {
     });
 }
 
-function Main_scene(pixi) {
-    let scene = new Container();
-    let root = null;
 
+
+function Main_scene(pixi) {
+    let fragments_list = null;
+
+    get_fragments_list()
+    .then(list => {
+        fragments_list = list.reduce((a, v) => ({ ...a, [v.name]: v.links}), {});
+        console.log(fragments_list);
+        handle_fragment();
+    });
+
+    let scene = new Container();
     let fragments = [];
 
-    add_fragment("svg/Голова/g1.svg", scene, {x:1200, y:600}, fragments)
-    .then(fragment => add_fragment("svg/щупальца/w1.svg", fragment, fragment.child_points[0], fragments));
+    function handle_fragment() {
+        if(fragments_list !== null) {
+            return add_fragment(fragments_list.root.random(), scene, {x:600, y:300}, fragments);
+        } else {
+            return null;
+        }
+    }
 
+    /*add_fragment("svg/root/g1.svg", scene, {x:1200, y:600}, fragments)
+    .then(fragment => add_fragment("svg/body/w1.svg", fragment, fragment.child_points[0], fragments));*/
+
+    let pending = null;
     scene.interactive = true;
     scene.click = function(e) {
         console.log("click");
+        if(pending === null) {
+            pending = handle_fragment();
+            pending.then(() => {
+                pending = null;
+            });
+        } else {
+            console.log("prev op is pending, ignore click");
+        }
     }
 
     scene.update = (delta, now) => {
