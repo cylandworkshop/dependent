@@ -3,7 +3,7 @@ let key_handler = (key, isPress) => {};
 
 let main_scene;
 
-let stage = new Stage();
+// let stage = new Stage();
 /*
 let glitch_filter = new PIXI.filters.GlitchFilter();
 let crt_filter = new PIXI.filters.CRTFilter();
@@ -32,7 +32,7 @@ function enable_glitch() {
 */
 
 function app(pixi) {
-    pixi.stage = stage;
+    // pixi.stage = stage;
 
     PIXI.utils.sayHello("Philosolhe begin!");
 
@@ -45,7 +45,7 @@ function app(pixi) {
 
     main_scene = Main_scene(pixi);
     main_scene.visible = false;
-    stage.addChild(main_scene);
+    pixi.stage.addChild(main_scene);
 
     /*setInterval(() => {
         if(stage.filters && stage.filters.length > 0) {

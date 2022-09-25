@@ -6,16 +6,16 @@ const Point = PIXI.Point;
 const Application = PIXI.Application;
 const Sprite = PIXI.Sprite;
 const lights = PIXI.lights;
-const display = PIXI.display;
+// const display = PIXI.display;
 
 /*const diffuseGroup = lights.diffuseGroup;
 const normalGroup = lights.normalGroup;
 const lightGroup = lights.lightGroup;*/
 
-const Layer = display.Layer;
-const Stage = display.Stage;
+// const Layer = display.Layer;
+// const Stage = display.Stage;
 
-const light = new PIXI.lights.PointLight(0xFFFFFF, 1);
+// const light = new PIXI.lights.PointLight(0xFFFFFF, 1);
 
 let RED_STYLE_H1 = new PIXI.TextStyle({
   fontFamily: "Arial",
