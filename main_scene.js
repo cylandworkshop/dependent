@@ -70,10 +70,12 @@ function add_fragment(url, parent, position, fragments) {
                 fragment.phi = 0.2;
                 fragment.target_angle = getRandomArbitrary(0, 360);
 
-                fragment.target_scale = getRandomArbitrary(0.5, 0.9);
+                fragment.target_scale = getRandomArbitrary(1, 2);
                 fragment.scale_speed = 0.05;
                 fragment.scale.x = 0;
                 fragment.scale.y = 0;
+
+                fragment.fixed = false;
                 
                 resolve(fragment);
             });
@@ -137,14 +139,37 @@ function Main_scene(pixi) {
         }
     }
 
+    let screen = {width: pixi.renderer.width, height: pixi.renderer.height};
+
     scene.update = (delta, now) => {
-        fragments.forEach(f => {
+        fragments.filter(f => !f.fixed).forEach(f => {
             let angle_delta = f.target_angle - f.angle;
             f.angle += delta * f.phi * angle_delta;
+
+            let bounds = f.getBounds();
+            let overbound = !(
+                bounds.x > 0 &&
+                bounds.y > 0 &&
+                bounds.x + bounds.width < screen.width &&
+                bounds.y + bounds.height < screen.height
+            );
+
+            if(overbound) {
+                f.target_scale -= delta * f.scale_speed * 0.4;
+                f.target_angle -= delta * f.phi * 2;
+            }
 
             let scale_delta = f.target_scale - f.scale.x;
             f.scale.x += delta * f.scale_speed * scale_delta;
             f.scale.y = f.scale.x;
+
+            if(angle_delta > 1 || scale_delta > 1 || overbound) {
+                console.log("motion", angle_delta, scale_delta);
+                console.log("bbox", f.getBounds());
+                console.log("pixi size", pixi.renderer.width)
+            } else {
+                f.fixed = true;
+            }
         });
     };
 
