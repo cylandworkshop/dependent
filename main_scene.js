@@ -35,7 +35,9 @@ function add_fragment(url, parent, position, fragments) {
             let parent_points = ellipses.filter(x => x.e.style.fill === "rgb(255, 0, 0)");
             let parent_point = parent_points[Math.floor((Math.random()*parent_points.length))];
 
-            // ellipses.filter(x => x.id !== parent_point.id).forEach(ellipse => ellipse.e.parentNode.removeChild(ellipse.e));
+            ellipses
+                // .filter(x => x.id !== parent_point.id)
+                .forEach(ellipse => ellipse.e.parentNode.removeChild(ellipse.e));
 
             // let svg_r = new PIXI.SVGResource(svg);
             let svg_r = new PIXI.SVGResource(new XMLSerializer().serializeToString(doc));
@@ -52,7 +54,9 @@ function add_fragment(url, parent, position, fragments) {
                 .filter(x => x.e.style.fill === "rgb(0, 0, 255)")
                 .map(x => ({
                     x: x.e.getAttribute("cx") - parent_point.e.getAttribute("cx"),
-                    y: x.e.getAttribute("cy") - parent_point.e.getAttribute("cy")
+                    y: x.e.getAttribute("cy") - parent_point.e.getAttribute("cy"),
+                    fragment,
+                    type: "body"
                 }));
 
             fragment_texture.baseTexture.on("loaded", () => {
@@ -63,8 +67,13 @@ function add_fragment(url, parent, position, fragments) {
                 fragment.position.x = position.x;
                 fragment.position.y = position.y;
 
-                fragment.scale.x = 0.5;
-                fragment.scale.y = 0.5;
+                fragment.phi = 0.2;
+                fragment.target_angle = getRandomArbitrary(0, 360);
+
+                fragment.target_scale = getRandomArbitrary(0.5, 0.9);
+                fragment.scale_speed = 0.05;
+                fragment.scale.x = 0;
+                fragment.scale.y = 0;
                 
                 resolve(fragment);
             });
@@ -90,10 +99,22 @@ function Main_scene(pixi) {
 
     let scene = new Container();
     let fragments = [];
+    let fragments_tree = [];
 
     function handle_fragment() {
         if(fragments_list !== null) {
-            return add_fragment(fragments_list.root.random(), scene, {x:600, y:300}, fragments);
+            if(fragments.length === 0) {
+                return add_fragment(fragments_list.root.random(), scene, {x:600, y:300}, fragments)
+                .then(f => {
+                    f.target_scale = 0.2;
+                });
+            } else {
+                let point = fragments.map(x => x.child_points.map((v,i)=>({v,i}))).flat().random();
+                let new_fragment = [...fragments_list.root, ...fragments_list.body].random();
+                point.v.fragment.child_points.splice(point.i, 1);
+
+                return add_fragment(new_fragment, point.v.fragment, point.v, fragments);
+            }
         } else {
             return null;
         }
@@ -118,7 +139,12 @@ function Main_scene(pixi) {
 
     scene.update = (delta, now) => {
         fragments.forEach(f => {
-            f.rotation += delta * 0.02;
+            let angle_delta = f.target_angle - f.angle;
+            f.angle += delta * f.phi * angle_delta;
+
+            let scale_delta = f.target_scale - f.scale.x;
+            f.scale.x += delta * f.scale_speed * scale_delta;
+            f.scale.y = f.scale.x;
         });
     };
 
