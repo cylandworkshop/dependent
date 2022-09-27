@@ -27,6 +27,7 @@ function parse_rotate(ellipse) {
 }
 
 function add_fragment(url, parent, position, fragments) {
+    console.log("adding fragment", url);
     return new Promise((resolve, reject) => {
         fetch(url)
         .then(r => r.text())
@@ -74,20 +75,26 @@ function add_fragment(url, parent, position, fragments) {
 
             let part_areas = ellipses
                 .filter(x => x.e.style.fill === "rgb(0, 255, 0)")
-                .map(x => ({
-                    x: x.e.getAttribute("cx") - parent_point.e.getAttribute("cx"),
-                    y: x.e.getAttribute("cy") - parent_point.e.getAttribute("cy"),
-                    width: x.e.getAttribute("rx") * 2,
-                    height: x.e.getAttribute("ry") * 2,
-                    rotate: parse_rotate(x.e),
-                    fragment,
-                    type: "part"
-                }));
+                .map(v => {
+                    let a = parse_rotate(v.e);
+                    let a_r = a * Math.PI/180;
+                    let x = v.e.getAttribute("cx") * Math.cos(a_r) - v.e.getAttribute("cy") * Math.sin(a_r);
+                    let y = v.e.getAttribute("cx") * Math.sin(a_r) + v.e.getAttribute("cy") * Math.cos(a_r);
+                    console.log("x", x, "y", y);
+                    return {
+                        x: x - parent_point.e.getAttribute("cx"),
+                        y: y - parent_point.e.getAttribute("cy"),
+                        width: v.e.getAttribute("rx") * 2,
+                        height: v.e.getAttribute("ry") * 2,
+                        rotate: a,
+                        fragment,
+                        type: "part"
+                    };
+                });
 
             fragment.child_points = [...child_points, ...part_areas];
 
-            fragment_texture.baseTexture.on("loaded", () => {
-                console.log("w:", fragment.width);
+            function on_ready() {
                 fragments.push(fragment);
                 parent.addChild(fragment);
 
@@ -97,7 +104,8 @@ function add_fragment(url, parent, position, fragments) {
                 fragment.phi = 0.2;
                 fragment.target_angle = getRandomArbitrary(0, 1);
 
-                fragment.target_scale = getRandomArbitrary(1, 2);
+                fragment.target_scale = {x: getRandomArbitrary(1, 2), y: 0};
+                fragment.target_scale.y = fragment.target_scale.x;
                 fragment.scale_speed = 0.05;
                 fragment.scale.x = 0;
                 fragment.scale.y = 0;
@@ -105,11 +113,13 @@ function add_fragment(url, parent, position, fragments) {
                 fragment.fixed = false;
                 
                 resolve(fragment);
-            });
+            }
 
-            // console.log(fragment.child_points[0]);
-
-            
+            if(fragment_texture.valid) {
+                on_ready();
+            } else {
+                fragment_texture.baseTexture.on("loaded", on_ready);
+            }
         });
     });
 }
@@ -120,16 +130,18 @@ function add_part(url, parent, area, fragments) {
         let part_texture = new PIXI.Texture.from(url);
         let part = new PIXI.Sprite(part_texture);
 
+        part.anchor.set(0.5);
+
         function on_ready() {
-            part.width = area.width;
-            part.height = area.height;
+            part.width = area.width * 1.4;
+            part.height = area.height * 1.4;
 
             part.child_points = [];
 
-            part.position.x = area.x - area.width/2;
-            part.position.y = area.y - area.height/2;
+            part.position.x = area.x;
+            part.position.y = area.y;
             part.target_angle = area.rotate;
-            part.target_scale = Math.sqrt(part.scale.x * part.scale.x + part.scale.y * part.scale.y);
+            part.target_scale = {x: part.scale.x, y: part.scale.y};
             part.scale_speed = 0.05;
             part.scale.x = 0;
             part.scale.y = 0;
@@ -139,7 +151,6 @@ function add_part(url, parent, area, fragments) {
 
             parent.addChild(part);
             fragments.push(part);
-            console.log("resolve part");
             resolve(part);
         }
 
@@ -173,12 +184,10 @@ function Main_scene(pixi) {
             if(fragments.length === 0) {
                 return add_fragment(fragments_list.root.random(), scene, {x:screen.width/2, y:screen.height/2}, fragments)
                 .then(f => {
-                    f.target_scale = 0.2;
+                    f.target_scale = {x: 0.5, y: 0.5};
                 });
             } else {
-                // fragments.forEach(x => console.log("childs:", x.child_points));
                 let points = fragments.map(x => x.child_points.map((v,i)=>({v,i}))).flat();
-                // console.log("all childs:", points);
                 if(points.length === 0) {
                     console.log("no more childs, resolve null");
                     return Promise.resolve(null);
@@ -188,19 +197,17 @@ function Main_scene(pixi) {
 
                 if(point.v.type === "body") {
                     let new_fragment = [...fragments_list.root, ...fragments_list.body].random();
-                    // console.log("resolve null");
                     return Promise.resolve(null);
-                    // return add_fragment(new_fragment, point.v.fragment, point.v, fragments);
+                    return add_fragment(new_fragment, point.v.fragment, point.v, fragments);
                 } else if (point.v.type === "part") {
                     let new_part = fragments_list.parts.random();
+                    // return Promise.resolve(null);
                     return add_part(new_part, point.v.fragment, point.v, fragments);
                 } else {
-                    // console.log("resolve null");
                     return Promise.resolve(null);
                 }
             }
         } else {
-            console.log("resolve null");
             return Promise.resolve(null);
         }
     }
@@ -224,6 +231,7 @@ function Main_scene(pixi) {
 
     scene.update = (delta, now) => {
         fragments.filter(f => !f.fixed).forEach(f => {
+            // f.target_angle += delta;
             let angle_delta = f.target_angle - f.angle;
             f.angle += delta * f.phi * angle_delta;
 
@@ -236,18 +244,18 @@ function Main_scene(pixi) {
             );
 
             if(overbound && false) {
-                f.target_scale -= delta * f.scale_speed * 0.4;
+                f.target_scale.x -= delta * f.scale_speed * 0.4;
+                f.target_scale.y -= delta * f.scale_speed * 0.4;
                 f.target_angle -= delta * f.phi * 2;
             }
+            console.log("fragment:", f.target_scale, f.target_angle);
 
-            let scale_delta = f.target_scale - f.scale.x;
-            f.scale.x += delta * f.scale_speed * scale_delta;
-            f.scale.y = f.scale.x;
+            let scale_delta = {x: f.target_scale.x - f.scale.x, y: f.target_scale.y - f.scale.y};
+            f.scale.x += delta * f.scale_speed * scale_delta.x;
+            f.scale.y += delta * f.scale_speed * scale_delta.y;
 
-            if(angle_delta > 1 || scale_delta > 0.1 || overbound) {
-                /*console.log("motion", angle_delta, scale_delta);
-                console.log("bbox", f.getBounds());
-                console.log("pixi size", pixi.renderer.width);*/
+            if(angle_delta > 1 || scale_delta.x > 0.1 || scale_delta.y > 0.1 /*|| overbound*/) {
+                console.log("motion", angle_delta, scale_delta);
             } else {
                 f.fixed = true;
             }
