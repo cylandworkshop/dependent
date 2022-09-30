@@ -26,6 +26,8 @@ function parse_rotate(ellipse) {
     return angle;
 }
 
+const SCALE = 0.5;
+
 function add_fragment(url, parent, position, fragments) {
     console.log("adding fragment", url);
     return new Promise((resolve, reject) => {
@@ -36,8 +38,8 @@ function add_fragment(url, parent, position, fragments) {
             div.insertAdjacentHTML("afterbegin", svg);
 
             let doc = div.querySelector("svg");
-            const width = doc.getAttribute("width");
-            const height = doc.getAttribute("height");
+            const width = doc.getAttribute("width") * SCALE;
+            const height = doc.getAttribute("height") * SCALE;
 
             let ellipses = [...doc.querySelectorAll("ellipse"), ...doc.querySelectorAll("circle")];
             ellipses = ellipses.map((e, id) => ({e, id}));
@@ -55,20 +57,20 @@ function add_fragment(url, parent, position, fragments) {
 
             // let svg_r = new PIXI.SVGResource(svg);
             let svg_r = new PIXI.SVGResource(new XMLSerializer().serializeToString(doc));
-            let svg_t = new PIXI.BaseTexture(svg_r);
+            let svg_t = new PIXI.BaseTexture(svg_r, {resolution: 1/SCALE});
 
-            let fragment_texture = new PIXI.Texture.from(svg_t);
+            let fragment_texture = PIXI.Texture.from(svg_t);
             let fragment = new PIXI.Sprite(fragment_texture);
             fragment.anchor.set(
-                parent_point.e.getAttribute("cx") / width,
-                parent_point.e.getAttribute("cy") / height
+                (parent_point.e.getAttribute("cx") / width) * SCALE,
+                (parent_point.e.getAttribute("cy") / height) * SCALE
             );
 
             let child_points = ellipses
                 .filter(x => x.e.style.fill === "rgb(0, 0, 255)")
                 .map(x => ({
-                    x: x.e.getAttribute("cx") - parent_point.e.getAttribute("cx"),
-                    y: x.e.getAttribute("cy") - parent_point.e.getAttribute("cy"),
+                    x: (x.e.getAttribute("cx") - parent_point.e.getAttribute("cx")) * SCALE,
+                    y: (x.e.getAttribute("cy") - parent_point.e.getAttribute("cy")) * SCALE,
                     fragment,
                     type: "body"
                 }));
@@ -82,8 +84,8 @@ function add_fragment(url, parent, position, fragments) {
                     let y = v.e.getAttribute("cx") * Math.sin(a_r) + v.e.getAttribute("cy") * Math.cos(a_r);
                     console.log("x", x, "y", y);
                     return {
-                        x: x - parent_point.e.getAttribute("cx"),
-                        y: y - parent_point.e.getAttribute("cy"),
+                        x: (x - parent_point.e.getAttribute("cx")) * SCALE,
+                        y: (y - parent_point.e.getAttribute("cy")) * SCALE,
                         width: v.e.getAttribute("rx") * 2,
                         height: v.e.getAttribute("ry") * 2,
                         rotate: a,
@@ -127,7 +129,7 @@ function add_fragment(url, parent, position, fragments) {
 function add_part(url, parent, area, fragments) {
     console.log("adding part", url);
     return new Promise((resolve, reject) => {
-        let part_texture = new PIXI.Texture.from(url);
+        let part_texture = PIXI.Texture.from(url);
         let part = new PIXI.Sprite(part_texture);
 
         part.anchor.set(0.5);
@@ -184,7 +186,7 @@ function Main_scene(pixi) {
             if(fragments.length === 0) {
                 return add_fragment(fragments_list.root.random(), scene, {x:screen.width/2, y:screen.height/2}, fragments)
                 .then(f => {
-                    f.target_scale = {x: 0.3, y: 0.3};
+                    f.target_scale = {x: 0.3 / SCALE, y: 0.3 / SCALE};
                 });
             } else {
                 let points = fragments.map(x => x.child_points.map((v,i)=>({v,i}))).flat();
@@ -218,15 +220,7 @@ function Main_scene(pixi) {
     let pending = null;
     scene.interactive = true;
     scene.click = function(e) {
-        console.log("click");
-        if(pending === null) {
-            pending = handle_fragment();
-            pending.then(() => {
-                pending = null;
-            });
-        } else {
-            console.log("prev op is pending, ignore click");
-        }
+        
     }
 
     scene.update = (delta, now) => {
@@ -263,7 +257,17 @@ function Main_scene(pixi) {
     };
 
     scene.key_handler = (key, isPress) => {
-        
+        if(isPress) {
+            console.log("click");
+            if(pending === null) {
+                pending = handle_fragment();
+                pending.then(() => {
+                    pending = null;
+                });
+            } else {
+                console.log("prev op is pending, ignore click");
+            }
+        }
     };
 
     scene.select = () => {
