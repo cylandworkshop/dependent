@@ -181,6 +181,11 @@ function Main_scene(pixi) {
     let fragments = [];
     let fragments_tree = [];
 
+    let map_sq = new Graphics();
+    map_sq.beginFill(0);
+    map_sq.drawRect(0,0,100,100);
+    scene.addChild(map_sq);
+
     function handle_fragment() {
         if(fragments_list !== null) {
             if(fragments.length === 0) {
