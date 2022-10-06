@@ -28,14 +28,14 @@ fi
 
 function check {
 	COUNT=0
-	for N in {1..20}; do
+	for N in {1..5}; do
 		if [[ $(cat /sys/class/gpio/gpio$PIN/value) == "0" ]]; then
 			COUNT=$((COUNT+1))
 		fi
-		sleep 0.01s
+		sleep 0.02s
 	done
 	echo $COUNT
-	if [[ "$COUNT" -gt "9" ]]; then
+	if [[ "$COUNT" -gt "0" ]]; then
 		TEST=1
 	else
 		TEST=0
